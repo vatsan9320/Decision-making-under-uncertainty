@@ -9,11 +9,10 @@ def check_feasibility(data, y_on, y_off, P2H, H2P, p, wind, demand, current_hydr
                                                 y_on[e, t-1], y_off[e, t-1]
     """
     # Ensure P2H and H2P are within limits
-    H2P = min(max(H2P, 0), data['h2p_rate'])
+    # Ensure H2P does not exceed available hydrogen
+    H2P = min(max(H2P, 0), data['h2p_rate'], current_hydrogen)
     P2H = min(max(P2H, 0), data['p2h_rate'])
     
-    # Ensure H2P does not exceed available hydrogen
-    H2P = min(H2P, current_hydrogen)
 
     # Ensure power production is non-negative
     p = max(p, 0)
@@ -22,7 +21,7 @@ def check_feasibility(data, y_on, y_off, P2H, H2P, p, wind, demand, current_hydr
     total_supply = p + wind + H2P * data['conversion_h2p'] - P2H
     if total_supply < demand:
         print('total_supply < demand')
-        print('total_supply:', total_supply, 'demand:', demand )
+        print('p:', p, 'wind:', wind, 'H2P:', H2P, 'P2H:', P2H, 'total_supply', total_supply, 'demand:', demand)
         return False, y_on, y_off, P2H, H2P, p  # Not feasible, return unchanged values
 
     # Ensure the unit is either on or off, but not both

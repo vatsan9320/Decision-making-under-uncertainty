@@ -3,21 +3,19 @@ import os
 from pyomo.environ import *
 import numpy as np
 
-# Add the directory to the Python path
-sys.path.append(os.path.abspath('C:/Users/luisa/OneDrive - Danmarks Tekniske Universitet/DTU/2year_2semester/Decision-making under uncertainty/AssignmentA/Assignment_Codes'))
 
 # Import necessary modules
-import data
-import Plots
-from PriceProcess import *
-from WindProcess import *
-from feasibility_check import check_feasibility
-from policy import make_decision
-from nextstate import nextstate
+from Assignment_Codes.data import get_fixed_data
+from Assignment_Codes.Plots import plot_results
+from Assignment_Codes.PriceProcess import *
+from Assignment_Codes.WindProcess import *
+from task1_feasibility_check import check_feasibility
+from task1_policy import make_decision
+from task1_nextstate import nextstate
 
 
 # Load given data
-data = data.get_fixed_data()
+data = get_fixed_data()
 
 n_timeslots = data['num_timeslots']
 
@@ -97,10 +95,8 @@ for e in range(n_experiments):
 
         # check whether the policy's here-and-now decisions are feasible/meaningful
         successful,  y_on[e, t], y_off[e, t], P2H[e, t], H2P[e, t], p[e, t] = check_feasibility(
-                                                data, y_on[e, t], y_off[e, t], P2H[e, t], H2P[e, t], p[e, t], wind[t],
-                                                demand[t], hydrogen_stock[e, t], ele[e, t], ele[e, t-1], 
-                                                y_on[e, t-1], y_off[e, t-1]
-                                                                 )
+                                    data, y_on[e, t], y_off[e, t], P2H[e, t], H2P[e, t], p[e, t], wind[t], demand[t], hydrogen_stock[e,t], ele[e,t]
+                                                                                                )
 
 
 

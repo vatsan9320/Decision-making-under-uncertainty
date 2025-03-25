@@ -6,15 +6,18 @@ sys.path.append(os.path.abspath('C:/Users/luisa/OneDrive - Danmarks Tekniske Uni
 #sys.path.append(os.path.abspath('../Decision-making under uncertainty/AssignmentA/Assignment_Codes'))
 
 # import specific modules from folder AssignmentA/Assignment_Codes
-import data
-import Plots
+from Assignment_Codes.data import get_fixed_data
+from Assignment_Codes.PriceProcess import *
+from Assignment_Codes.WindProcess import *
+from task1_feasibility_check import check_feasibility
+from task1_policy import make_decision
+from task1_nextstate import nextstate
+from Assignment_Codes.Plots import plot_results
+
 # given data
-data = data.get_fixed_data()
+data = get_fixed_data()
 
 # from Plots import *
-from PriceProcess import *
-from WindProcess import *
-
 from pyomo.environ import *
 
 # Create a model
@@ -185,7 +188,7 @@ wind_trajectory = [simulated_data['wind'][t] for t in range(data['num_timeslots'
 
 # run Plots.py
 # Plot the results using the function from Plots.py
-Plots.plot_results(data,
+plot_results(data,
     times=range(data['num_timeslots']),
     wind_trajectory=wind_trajectory,
     demand_schedule=data['demand_schedule'],

@@ -15,12 +15,17 @@ from pyomo.environ import *
 
 sys.path.append(os.path.abspath('C:/Users/luisa/OneDrive - Danmarks Tekniske Universitet/DTU/2year_2semester/Decision-making under uncertainty/AssignmentA/Assignment_Codes'))
 
-from data import get_fixed_data
-from WindProcess import wind_model
-from PriceProcess import price_model
+# Import necessary modules
+from Assignment_Codes.data import get_fixed_data
+from Assignment_Codes.Plots import plot_results
+from Assignment_Codes.PriceProcess import *
+from Assignment_Codes.WindProcess import *
 from task1_feasibility_check import check_feasibility
-from Plots import plot_results
+from task1_policy import make_decision
+from task1_nextstate import nextstate
 
+#set a seed for reproducibility
+np.random.seed(42)
 
 def generate_samples(data, node_values, num_samples):
     previous_wind, previous_price, current_wind, current_price  = node_values
@@ -171,7 +176,8 @@ def stochastic_optimization_here_and_now(data,T, tau, initial_node, current_stor
     for s in model.S:
         for t in model.T:
             model.Power.add(model.p[s,t] + scenario_paths_matrix[s][t][0] + model.H2P[s,t]*data['conversion_h2p'] - model.P2H[s,t] >= data['demand_schedule'][t])
-                    
+            #print('scnario:', s, 'time:', t, 'wind:', scenario_paths_matrix[s][t][0], 'price:', scenario_paths_matrix[s][t][1], 'demand:', data['demand_schedule'][t])                
+    
     # there is a conversion rate from power to hydrogen
     model.P2H_Conversion = ConstraintList()
     for s in model.S:
@@ -221,38 +227,38 @@ def stochastic_optimization_here_and_now(data,T, tau, initial_node, current_stor
 
     # Non-anticipativity constraints. If two scenarios share history at day t, then the decisions made at day t for both scenarios must be the same
     model.NonAnticipativity = ConstraintList()
-    #for t in model.T:
+    for t in model.T:
     #    if t == 0:
     #        continue
-    for s in model.S:
-        for s2 in model.S:
-            if s != s2 and scenario_paths_matrix[s][t] == scenario_paths_matrix[s2][t]:
-                model.NonAnticipativity.add(model.e[s, t] == model.e[s2, t])
-                model.NonAnticipativity.add(model.P2H[s, t] == model.P2H[s2, t])
-                model.NonAnticipativity.add(model.Storage[s, t] == model.Storage[s2, t])
-                model.NonAnticipativity.add(model.H2P[s, t] == model.H2P[s2, t])
-                model.NonAnticipativity.add(model.p[s, t] == model.p[s2, t])
-                model.NonAnticipativity.add(model.yon[s, t] == model.yon[s2, t])
-                model.NonAnticipativity.add(model.yoff[s, t] == model.yoff[s2, t])
+        for s in model.S:
+            for s2 in model.S:
+                if s != s2 and scenario_paths_matrix[s][t] == scenario_paths_matrix[s2][t]:
+                    model.NonAnticipativity.add(model.e[s, t] == model.e[s2, t])
+                    model.NonAnticipativity.add(model.P2H[s, t] == model.P2H[s2, t])
+                    model.NonAnticipativity.add(model.Storage[s, t] == model.Storage[s2, t])
+                    model.NonAnticipativity.add(model.H2P[s, t] == model.H2P[s2, t])
+                    model.NonAnticipativity.add(model.p[s, t] == model.p[s2, t])
+                    model.NonAnticipativity.add(model.yon[s, t] == model.yon[s2, t])
+                    model.NonAnticipativity.add(model.yoff[s, t] == model.yoff[s2, t])
 
 
     # Solve the model
     solver = SolverFactory('gurobi')
-    solver
     results = solver.solve(model, tee=True)
     # return the decisions for the first time period for each scenario
-
+    # Check if an optimal solution was found
+    if results.solver.termination_condition == TerminationCondition.optimal:
+        print("Optimal solution found")
 
     
     # Print the matrix
-    print_matrix(model.e, "Electrolyzer", model)
-    print_matrix(model.P2H, "P2H", model)
-    print_matrix(model.Storage, "Storage", model)
-    print_matrix(model.H2P, "H2P", model)
+    #print_matrix(model.e, "Electrolyzer", model)
+    #print_matrix(model.P2H, "P2H", model)
+    #print_matrix(model.Storage, "Storage", model)
+    #print_matrix(model.H2P, "H2P", model)
     print_matrix(model.p, "Power", model)
-    print_matrix(model.yon, "Yon", model)
-    print_matrix(model.yoff, "Yoff",
-    model)
+    #print_matrix(model.yon, "Yon", model)
+    #print_matrix(model.yoff, "Yoff",model)
 
     #return model.e[0,0].value, model.P2H[0,0].value, model.Storage[0,0].value, model.H2P[0,0].value, model.p[0,0].value, model.yon[0,0].value, model.yoff[0,0].value
     # we return the decisions for the first time period for each scenario
@@ -296,14 +302,14 @@ def multi_stage_sp_policy(data, T, num_clusters, num_samples=500):
 
     for tau in range(T):
         if tau == 0:
+            # Initialize state variables
             previous_wind = data['wind_power_t_2']
             previous_price = data['price_t_2']
             current_wind = data['wind_power_t_1']
             current_price = data['price_t_1']
             current_storage = 10
             current_ele_status = 1
-            yon[-1] = 0
-            yoff[-1] = 0
+
 
 
         # reveal uncertainity the wind and price values
@@ -313,6 +319,10 @@ def multi_stage_sp_policy(data, T, num_clusters, num_samples=500):
         # store the revealed values
         wind_trajectory.append(wind_next)
         price_trajectory.append(price_next)
+
+        # store ele and storage values
+        e[tau] = current_ele_status
+        S[tau] = current_storage
         
         parent_node = [current_wind, current_price, wind_next, price_next]
         # generate scenarios based on the revealed values
@@ -324,21 +334,25 @@ def multi_stage_sp_policy(data, T, num_clusters, num_samples=500):
         
 
         # check if the policy is feasible
-        status, yon[tau], yoff[tau], P2H[tau], H2P[tau], p[tau] = check_feasibility(
-            data, yon[tau], yoff[tau], P2H[tau], H2P[tau], p[tau], wind_next, data['demand_schedule'][tau], S[tau], e[tau], e[tau-1], yon[tau-1], yoff[tau-1]
-        )
-
-        if not status:
-            print(f"Policy not feasible at time {tau}")
-            break
+        #status, yon[tau], yoff[tau], P2H[tau], H2P[tau], p[tau] = check_feasibility(
+        #    data, yon[tau], yoff[tau], P2H[tau], H2P[tau], p[tau], wind_next, data['demand_schedule'][tau], current_storage, current_ele_status
+        #    )
+#
+        #if not status:
+        #    print(f"Policy not feasible at time {tau}")
+        #    #lets define a feasible policy
+        #    #status, yon[tau], yoff[tau], P2H[tau], H2P[tau], p[tau] = correct_decision(data, yon[tau], yoff[tau], P2H[tau], H2P[tau], p[tau], wind_next, data['demand_schedule'][tau], current_storage, current_ele_status)
+        #    break
+        
+        # update state variables for the next iteration
+        current_storage = current_storage + P2H[tau] * data['conversion_p2h'] - H2P[tau]
+        current_ele_status = current_ele_status + yon[tau] - yoff[tau]
 
         # Update current values for next iteration
         previous_wind = current_wind
         previous_price = current_price
         current_wind = wind_next
         current_price = price_next
-        current_storage = S[tau]
-        current_ele_status = e[tau]
 
     # 5. Create a 'times' array for your x-axis
     times = np.arange(tau+1)

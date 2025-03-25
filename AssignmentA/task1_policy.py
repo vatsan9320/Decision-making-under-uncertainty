@@ -1,6 +1,3 @@
-import data
-data = data.get_fixed_data()
-
 def make_decision(wind, price, hydrogen, ele, demand):
     # my policy will be that the electrolyzer is always off
     y_on = 0
