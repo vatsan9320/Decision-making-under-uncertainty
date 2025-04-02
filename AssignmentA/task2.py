@@ -13,7 +13,6 @@ import sys
 import networkx as nx
 from pyomo.environ import *
 
-sys.path.append(os.path.abspath('C:/Users/luisa/OneDrive - Danmarks Tekniske Universitet/DTU/2year_2semester/Decision-making under uncertainty/AssignmentA/Assignment_Codes'))
 
 # Import necessary modules
 from Assignment_Codes.data import get_fixed_data
