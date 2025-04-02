@@ -25,7 +25,7 @@ from task1_policy import make_decision
 from task1_nextstate import nextstate
 
 #set a seed for reproducibility
-np.random.seed(42)
+#np.random.seed(42)
 
 def generate_samples(data, node_values, num_samples):
     previous_wind, previous_price, current_wind, current_price  = node_values
@@ -50,6 +50,8 @@ def cluster_samples(samples, num_clusters):
     cluster_centers = scaler.inverse_transform(kmeans.cluster_centers_)  # Convert back to original values
     cluster_probs = np.bincount(labels) / len(labels)
     
+
+
     return cluster_centers, cluster_probs, labels
 
 def visualize_clusters(samples, labels, cluster_centers):
@@ -150,7 +152,7 @@ def stochastic_optimization_here_and_now(data,T, tau, initial_node, current_stor
 
 
     # Define sets
-    model.T = RangeSet(0, num_of_days - 1)
+    model.T = RangeSet(0, num_of_days)
     model.S = RangeSet(0, n_scenarios - 1)
 
     # Declare variables for each scenario and time period
@@ -175,7 +177,7 @@ def stochastic_optimization_here_and_now(data,T, tau, initial_node, current_stor
     model.Power = ConstraintList()
     for s in model.S:
         for t in model.T:
-            model.Power.add(model.p[s,t] + scenario_paths_matrix[s][t][0] + model.H2P[s,t]*data['conversion_h2p'] - model.P2H[s,t] >= data['demand_schedule'][t])
+            model.Power.add(model.p[s,t] + scenario_paths_matrix[s][t][0] + model.H2P[s,t]*data['conversion_h2p'] - model.P2H[s,t] >= data['demand_schedule'][tau+t])
             #print('scnario:', s, 'time:', t, 'wind:', scenario_paths_matrix[s][t][0], 'price:', scenario_paths_matrix[s][t][1], 'demand:', data['demand_schedule'][t])                
     
     # there is a conversion rate from power to hydrogen
@@ -227,12 +229,10 @@ def stochastic_optimization_here_and_now(data,T, tau, initial_node, current_stor
 
     # Non-anticipativity constraints. If two scenarios share history at day t, then the decisions made at day t for both scenarios must be the same
     model.NonAnticipativity = ConstraintList()
-    for t in model.T:
-    #    if t == 0:
-    #        continue
-        for s in model.S:
+    for s in model.S:
+        for t in model.T:
             for s2 in model.S:
-                if s != s2 and scenario_paths_matrix[s][t] == scenario_paths_matrix[s2][t]:
+                if scenario_paths_matrix[s][t] == scenario_paths_matrix[s2][t]: #s != s2 and 
                     model.NonAnticipativity.add(model.e[s, t] == model.e[s2, t])
                     model.NonAnticipativity.add(model.P2H[s, t] == model.P2H[s2, t])
                     model.NonAnticipativity.add(model.Storage[s, t] == model.Storage[s2, t])
@@ -309,7 +309,6 @@ def multi_stage_sp_policy(data, T, num_clusters, num_samples=500):
             current_price = data['price_t_1']
             current_storage = 10
             current_ele_status = 1
-
 
 
         # reveal uncertainity the wind and price values
