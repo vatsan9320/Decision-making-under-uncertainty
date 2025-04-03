@@ -20,14 +20,17 @@ def train_value_function(data, gamma=0.95, I=100, K=5):
         X, Y_target = [], []
 
         for _ in range(I):
-            # ---- Generate consistent z_prev and z_t using your models ----
             wind_prev = data['wind_power_t_2']
-            wind_curr = wind_model(wind_prev, wind_prev, data)
+            wind_curr = data['wind_power_t_1']
+            # Simulate wind and price for the next time step
+            wind_next = wind_model(wind_curr, wind_prev, data)
             price_prev = data['price_t_2']
-            price_curr = price_model(price_prev, price_prev, wind_curr, data)
+            price_curr = data['price_t_1']
+            # Simulate price based on wind and previous price
+            price_next = price_model(price_curr, price_prev, wind_next, data)
 
-            z_prev = (wind_prev, price_prev)
-            z_t = (wind_curr, price_curr)
+            z_prev = (wind_curr, price_curr)
+            z_t = (wind_next, price_next)
 
             # ---- Sample endogenous state y_t = (ele_status, storage) ----
             ele_status = np.random.choice([0, 1])

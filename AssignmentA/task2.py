@@ -266,12 +266,10 @@ def stochastic_optimization_here_and_now(data,T, tau, initial_node, current_stor
 
 
 def calculate_max_look_ahead(V, B):
-    def equation(L, V, B):
-        return V * L * B**(L-1) - 1000
-
-    L_initial_guess = 1
-    L_solution = fsolve(equation, L_initial_guess, args=(V, B))
-    return int(L_solution[0])
+    L = 1  # Start with L = 1
+    while V * L * B**(L - 1) <= 1000:
+        L += 1
+    return L - 1 
  
 def multi_stage_sp_policy(data, T, num_clusters, num_samples=500):
 
@@ -282,8 +280,8 @@ def multi_stage_sp_policy(data, T, num_clusters, num_samples=500):
     # just binary variables
     V = 3
     B = num_clusters
-    #look_ahead = calculate_max_look_ahead(V, B)
-    look_ahead = 3  
+    look_ahead = calculate_max_look_ahead(V, B)
+    #look_ahead = 3  
     print(f"Maximum number of look-ahead days: {look_ahead}")
 
 
