@@ -1,7 +1,7 @@
 # Import necessary modules
 import matplotlib.pyplot as plt
 from Assignment_Codes.data import get_fixed_data
-from task3_luisa import *
+from task3_luisa_main import *
 
 
 
