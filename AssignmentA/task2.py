@@ -276,6 +276,163 @@ def stochastic_optimization_here_and_now(data, wind, price, hydrogen_stock, ele,
     # we can do [0,0] because the decision in this period is the same for all scenarios
     return model.yon[0,0].value, model.yoff[0,0].value, model.P2H[0,0].value, model.H2P[0,0].value, model.p[0,0].value
 
+def generate_expected_scenario_path(data, wind, price, tau, T, num_samples=20):
+    """
+    Generates a deterministic scenario path from tau using expected values from the stochastic models.
+
+    Returns:
+        List of (wind, price) pairs starting from tau for use in the EV policy.
+    """
+    horizon = T - tau
+    scenario_path = []
+
+    # Step 1: Initialize with current values
+    wind_curr = wind[tau]
+    price_curr = price[tau]
+    scenario_path.append((wind_curr, price_curr))
+
+    # Step 2: Use appropriate past values
+    if tau == 0:
+        wind_prev = data['wind_power_t_1']
+        price_prev = data['price_t_1']
+    else:
+        wind_prev = wind[tau - 1]
+        price_prev = price[tau - 1]
+
+    # Step 3: Generate expected path
+    for t in range(1, horizon):
+        # Build node input for generator: [w_prev, p_prev, w_curr, p_curr]
+        node = [wind_prev, price_prev, wind_curr, price_curr]
+        samples = generate_samples(data, node, num_samples)
+        w_next = np.mean(samples[:, 0])
+        p_next = np.mean(samples[:, 1])
+
+        scenario_path.append((w_next, p_next))
+
+        # Shift forward for next iteration
+        wind_prev, price_prev=  wind_curr, price_curr
+        wind_curr, price_curr = w_next, p_next
+
+    return scenario_path
+
+def EV_stochastic_optimization_here_and_now(data, wind, price, hydrogen_stock, ele, tau, T, n_clusters=2, num_samples=20):
+
+    # Generate expected scenario path
+    scenario_path = generate_expected_scenario_path(data, wind, price, tau, T, num_samples)
+    
+    # Get the number of tlook ahead days
+    look_ahead = calculate_max_look_ahead(3, n_clusters)  # Assuming 3 binary variables (y_on, y_off, ele) and 2 clusters for this example
+
+    # Determine number of days to optimize
+    num_of_days = max(0, min(look_ahead, T - tau -1))  # Ensure non-negative
+        
+
+    # Number of scenarios
+    n_scenarios = 1
+        
+    # Initialize Gurobi model
+    # Create a model
+    model = ConcreteModel()
+
+
+    # Define sets
+    model.T = RangeSet(0, num_of_days)
+    model.S = RangeSet(0, n_scenarios - 1)
+
+    # Declare variables for each scenario and time period
+    model.e = Var(model.S, model.T, within=Binary)
+    model.P2H = Var(model.S, model.T, bounds=(0, data['p2h_rate']))
+    model.Storage = Var(model.S, model.T, bounds=(0, data['hydrogen_capacity']))
+    model.H2P = Var(model.S, model.T, bounds=(0, data['h2p_rate']))
+    model.p = Var(model.S, model.T, bounds=(0, None))
+    model.yon = Var(model.S, model.T, within=Binary)
+    model.yoff = Var(model.S, model.T, within=Binary)
+    #------------------------------------------------------------------------------------------
+
+    
+    # Define objective function (expected cost minimization)
+    model.cost = Objective(
+        expr=sum(sum(model.e[s,t] * data['electrolyzer_cost'] + model.p[s,t] * scenario_path[t][1] for t in model.T) for s in model.S), #scenario_paths_matrix[scenario][time][(wind, price)]
+        sense=minimize
+    )
+
+    # Constraint on available power always == demand
+    model.Power = ConstraintList()
+    for s in model.S:
+        for t in model.T:
+            model.Power.add(model.p[s,t] + scenario_path[t][0] + model.H2P[s,t]*data['conversion_h2p'] - model.P2H[s,t] >= data['demand_schedule'][tau+t])
+            #print('scnario:', s, 'time:', t, 'wind:', scenario_paths_matrix[s][t][0], 'price:', scenario_paths_matrix[s][t][1], 'demand:', data['demand_schedule'][t])                
+    
+    # there is a conversion rate from power to hydrogen
+    model.P2H_Conversion = ConstraintList()
+    for s in model.S:
+        for t in model.T:
+            model.P2H_Conversion.add(model.P2H[s,t] <= model.e[s,t] * data['p2h_rate'])  
+
+    # thre is a conversion rate from hydrogen to power
+    model.H2P_Conversion = ConstraintList()
+    for s in model.S:
+        for t in model.T:
+            model.H2P_Conversion.add(model.H2P[s,t] <= model.Storage[s,t])
+
+    #  When an amount of hydrogen is produced at t-1, it becomes stored and available 
+    # in the tank from the next timeslot t, plus the amount of hydrogen already stored (t-1) 
+    # and minus the amount of hydrogen turned back into power in the same period t
+    model.Storage_Constraint = ConstraintList()
+    for s in model.S:
+        for t in model.T:
+            if t == 0:
+                model.Storage_Constraint.add(model.Storage[s,t] == hydrogen_stock[tau])
+            else:
+                model.Storage_Constraint.add(model.Storage[s,t] == model.Storage[s,t-1] + model.P2H[s,t-1] * data['conversion_p2h']  - model.H2P[s,t-1])
+
+    # if the electrolyzer is set to on we cannot turn it off and viceversa
+    model.Electrolyzer = ConstraintList()
+    for s in model.S:
+        for t in model.T:
+            model.Electrolyzer.add(model.yon[s,t] + model.yoff[s,t] <= 1)
+
+    # we can only turn it off if it is on
+    for s in model.S:
+        for t in model.T:
+            model.Electrolyzer.add(model.e[s,t] >= model.yoff[s,t])
+
+    # we can only turn it on if it is off
+    for s in model.S:
+        for t in model.T:
+            model.Electrolyzer.add(model.e[s,t] <= 1- model.yon[s,t])
+
+    # there is also relatioship between ele at time t and ele at time t-1 and yon and yoff at time t-1
+    for s in model.S:
+        for t in model.T:
+            if t == 0:
+                model.Electrolyzer.add(model.e[s,t] == ele[tau])
+            else:
+                model.Electrolyzer.add(model.e[s,t] == model.e[s,t-1] + model.yon[s,t-1] - model.yoff[s,t-1])
+
+
+    # Solve the model
+    solver = SolverFactory('gurobi')
+    results = solver.solve(model, tee=True)
+    # return the decisions for the first time period for each scenario
+    # Check if an optimal solution was found
+    if results.solver.termination_condition == TerminationCondition.optimal:
+        print("Optimal solution found")
+
+    
+    # Print the matrix
+    print_matrix(model.e, "Electrolyzer", model)
+    print_matrix(model.P2H, "P2H", model)
+    print_matrix(model.Storage, "Storage", model)
+    print_matrix(model.H2P, "H2P", model)
+    print_matrix(model.p, "Power", model)
+    print_matrix(model.yon, "Yon", model)
+    print_matrix(model.yoff, "Yoff",model)
+
+    #return model.e[0,0].value, model.P2H[0,0].value, model.Storage[0,0].value, model.H2P[0,0].value, model.p[0,0].value, model.yon[0,0].value, model.yoff[0,0].value
+    # we return the decisions for the first time period for each scenario
+    # we can do [0,0] because the decision in this period is the same for all scenarios
+    return model.yon[0,0].value, model.yoff[0,0].value, model.P2H[0,0].value, model.H2P[0,0].value, model.p[0,0].value
 
 
 # try with multistage stochastic optimization
@@ -286,4 +443,7 @@ if __name__ == "__main__":
 
     #evaluate policy
     results = evaluate_policy_over_experiments(stochastic_optimization_here_and_now, data, experiments, data['num_timeslots'], verbose=True)
-    print("Dummy policy costs: ", results)
+    print("stochastic_optimization_here_and_now policy costs: ", results)
+
+    results = evaluate_policy_over_experiments(EV_stochastic_optimization_here_and_now, data, experiments, data['num_timeslots'], verbose=True)
+    print("EV policy costs: ", results)

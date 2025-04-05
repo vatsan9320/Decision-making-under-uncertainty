@@ -149,3 +149,21 @@ def reward_function(z_t, y_t, u, data):
     cost = ele_status * data['electrolyzer_cost'] + p * price
     # Add penalty or reward for unmet demand or stability if needed
     return -cost
+
+
+# to run in the experiments
+def adp_policy_wrapper(theta):
+    def wrapper(data, wind, price, hydrogen_stock, ele, t, T):
+        # Get states
+        if t == 0:
+            z_prev = (data['wind_power_t_1'], data['price_t_1'])
+        elif t == 1:
+            z_prev = (data['wind_power_t_1'], data['price_t_1'])
+        else:
+            z_prev = (wind[t - 2], price[t - 2])
+
+        z_t = (wind[t - 1], price[t - 1])
+        y_t = (ele[t], hydrogen_stock[t])
+
+        return adp_policy(z_t, z_prev, y_t, theta, data)
+    return wrapper

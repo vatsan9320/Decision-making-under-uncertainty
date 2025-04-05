@@ -13,6 +13,7 @@ from task1_feasibility_check import check_feasibility
 from task1_policy import make_dummy_decision
 from task1_nextstate import nextstate
 from task0 import simulate_wind_and_price
+from task2 import *
 
 # Load given data
 data = get_fixed_data()
@@ -27,7 +28,7 @@ def generate_experiments(num_timeslots, n):
         experiments.append((wind_seq, price_seq))
     return experiments
 
-def evaluate_policy_over_experiments(policy_func, data, experiments, T, verbose=False):
+def evaluate_policy_over_experiments(policy_func, data, experiments, T, n_clusters=None, verbose=False):
     n_experiments = len(experiments)
     n_timeslots = T
     policy_costs = np.full(n_experiments, np.nan)
@@ -42,8 +43,10 @@ def evaluate_policy_over_experiments(policy_func, data, experiments, T, verbose=
 
         for t in range(n_timeslots):
             # Decision from the policy
-            y_on, y_off, P2H, H2P, p = policy_func(data, wind, price, hydrogen_stock, ele, t, T=n_timeslots)
-
+            if policy_func == stochastic_optimization_here_and_now:
+                y_on, y_off, P2H, H2P, p = policy_func(data, wind, price, hydrogen_stock, ele, t, n_timeslots, n_clusters)
+            else:
+                y_on, y_off, P2H, H2P, p = policy_func(data, wind, price, hydrogen_stock, ele, t, n_timeslots)
             # Check feasibility
             feasible, y_on, y_off, P2H, H2P, p = check_feasibility(
                 data, y_on, y_off, P2H, H2P, p, wind, hydrogen_stock, ele, t
