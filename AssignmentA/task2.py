@@ -19,7 +19,7 @@ from Assignment_Codes.data import get_fixed_data
 from Assignment_Codes.Plots import plot_results
 from Assignment_Codes.PriceProcess import *
 from Assignment_Codes.WindProcess import *
-from task1_main import *
+from task1 import *
 
 #set a seed for reproducibility
 #np.random.seed(42)
@@ -255,11 +255,11 @@ def stochastic_optimization_here_and_now(data, wind, price, hydrogen_stock, ele,
 
     # Solve the model
     solver = SolverFactory('gurobi')
-    results = solver.solve(model, tee=True)
+    results = solver.solve(model, tee=False)
     # return the decisions for the first time period for each scenario
     # Check if an optimal solution was found
     if results.solver.termination_condition == TerminationCondition.optimal:
-        print("Optimal solution found")
+        print(f"Optimal solution found, objective value: {model.cost()}") 
 
     
     # Print the matrix
@@ -267,7 +267,7 @@ def stochastic_optimization_here_and_now(data, wind, price, hydrogen_stock, ele,
     #print_matrix(model.P2H, "P2H", model)
     #print_matrix(model.Storage, "Storage", model)
     #print_matrix(model.H2P, "H2P", model)
-    print_matrix(model.p, "Power", model)
+    #print_matrix(model.p, "Power", model)
     #print_matrix(model.yon, "Yon", model)
     #print_matrix(model.yoff, "Yoff",model)
 
@@ -413,21 +413,21 @@ def EV_stochastic_optimization_here_and_now(data, wind, price, hydrogen_stock, e
 
     # Solve the model
     solver = SolverFactory('gurobi')
-    results = solver.solve(model, tee=True)
+    results = solver.solve(model, tee=False)
     # return the decisions for the first time period for each scenario
     # Check if an optimal solution was found
     if results.solver.termination_condition == TerminationCondition.optimal:
-        print("Optimal solution found")
+        print(f"Optimal solution found, objective value: {model.cost()}") 
 
     
     # Print the matrix
-    print_matrix(model.e, "Electrolyzer", model)
-    print_matrix(model.P2H, "P2H", model)
-    print_matrix(model.Storage, "Storage", model)
-    print_matrix(model.H2P, "H2P", model)
-    print_matrix(model.p, "Power", model)
-    print_matrix(model.yon, "Yon", model)
-    print_matrix(model.yoff, "Yoff",model)
+    #print_matrix(model.e, "Electrolyzer", model)
+    #print_matrix(model.P2H, "P2H", model)
+    #print_matrix(model.Storage, "Storage", model)
+    #print_matrix(model.H2P, "H2P", model)
+    #print_matrix(model.p, "Power", model)
+    #print_matrix(model.yon, "Yon", model)
+    #print_matrix(model.yoff, "Yoff",model)
 
     #return model.e[0,0].value, model.P2H[0,0].value, model.Storage[0,0].value, model.H2P[0,0].value, model.p[0,0].value, model.yon[0,0].value, model.yoff[0,0].value
     # we return the decisions for the first time period for each scenario

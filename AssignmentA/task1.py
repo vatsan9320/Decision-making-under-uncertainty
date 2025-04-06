@@ -10,7 +10,7 @@ from Assignment_Codes.Plots import plot_results
 from Assignment_Codes.PriceProcess import *
 from Assignment_Codes.WindProcess import *
 from task1_feasibility_check import check_feasibility
-from task1_policy import make_dummy_decision
+from task1_dummy import make_dummy_decision
 from task1_nextstate import nextstate
 from task0 import simulate_wind_and_price
 from task2 import *
@@ -34,6 +34,9 @@ def evaluate_policy_over_experiments(policy_func, data, experiments, T, n_cluste
     policy_costs = np.full(n_experiments, np.nan)
 
     for e, (wind, price) in enumerate(experiments):
+        # print experiment number/n_experiments
+        print(f"[Experiment {e + 1}/{n_experiments}]")  
+        # Initialize state variables      
         hydrogen_stock = {}
         ele = {}
         hydrogen_stock[0] = 0

@@ -11,7 +11,7 @@ def get_fixed_data():
     """
     Returns the fixed data for the energy hub simulation.
     """
-    num_timeslots = 2
+    num_timeslots = 24
     return {
         # Conversion efficiencies
         'conversion_p2h': 0.9,

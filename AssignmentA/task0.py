@@ -151,21 +151,21 @@ def solve_optimal_in_hindsight(data, wind_seq, price_seq, T):
     solver = SolverFactory('gurobi')  # Make sure Gurobi is installed and properly configured
 
     # Solve the model
-    results = solver.solve(model, tee=True)
+    results = solver.solve(model, tee=False)
 
     # Check if an optimal solution was found
     if results.solver.termination_condition == TerminationCondition.optimal:
-        print("Optimal solution found")
+        print(f"Optimal solution found, objective value: {model.cost()}") 
 
         # Print out variable values and objective value
-        print("Variable values:")
-        for t in range(T):
-            print(f"u[{t}]: {value(model.e[t]):.3f}")
-            print(f"P2H[{t}]: {value(model.P2H[t]):.3f}")
-            print(f"H[{t}]: {value(model.S[t]):.3f}")
-            print(f"H2P[{t}]: {value(model.H2P[t]):.3f}")
-            print(f"p[{t}]: {value(model.p[t]):.3f}")
-        print(f"\nObjective value: {value(model.cost):.3f}\n")
+        #print("Variable values:")
+        #for t in range(T):
+        #    print(f"u[{t}]: {value(model.e[t]):.3f}")
+        #    print(f"P2H[{t}]: {value(model.P2H[t]):.3f}")
+        #    print(f"H[{t}]: {value(model.S[t]):.3f}")
+        #    print(f"H2P[{t}]: {value(model.H2P[t]):.3f}")
+        #    print(f"p[{t}]: {value(model.p[t]):.3f}")
+        #print(f"\nObjective value: {value(model.cost):.3f}\n")
     else:
         print("No optimal solution found")
     #------------------------------------------------------------------------------------------

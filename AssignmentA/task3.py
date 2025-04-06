@@ -1,6 +1,10 @@
 import numpy as np
 from Assignment_Codes.WindProcess import wind_model
 from Assignment_Codes.PriceProcess import price_model
+from Assignment_Codes.data import get_fixed_data
+from task1 import *
+
+data = get_fixed_data()
 
 # Define the feature vector for the state
 def feature_vector(z, y):
@@ -109,7 +113,7 @@ def generate_candidate_controls(data, z, y):
             for P2H in [0, data['p2h_rate'] if ele_status else 0]:  # only produce if ON
                 for H2P in [0, min(data['h2p_rate'], storage)]:
                     for p in [0, 5, 10]:  # or range to max grid power
-                        candidates.append((P2H, H2P, p, yon, yoff))
+                        candidates.append((yon, yoff, P2H, H2P, p))
 
     return candidates
 
@@ -132,7 +136,7 @@ def simulate_next_exogenous(z_t, z_prev, data):
 
 def simulate_next_endogenous(y_t, u, data):
     ele_status, storage = y_t
-    P2H, H2P, p, yon, yoff = u
+    yon, yoff, P2H, H2P, p = u
 
     ele_next = ele_status + yon - yoff
     storage_next = storage + P2H * data['conversion_p2h'] - H2P
@@ -144,7 +148,7 @@ def simulate_next_endogenous(y_t, u, data):
 def reward_function(z_t, y_t, u, data):
     wind, price = z_t
     ele_status, _ = y_t
-    P2H, H2P, p, yon, yoff = u
+    yon, yoff, P2H, H2P, p = u
 
     cost = ele_status * data['electrolyzer_cost'] + p * price
     # Add penalty or reward for unmet demand or stability if needed
@@ -167,3 +171,13 @@ def adp_policy_wrapper(theta):
 
         return adp_policy(z_t, z_prev, y_t, theta, data)
     return wrapper
+
+# try with dummy policy
+if __name__ == "__main__":
+    #generate experiments
+    experiments = generate_experiments(data['num_timeslots'], n=20)
+
+    #evaluate policy
+    theta = train_value_function(data, gamma=0.95, I=50, K=5)
+    results = evaluate_policy_over_experiments(adp_policy_wrapper(theta), data, experiments, T=data['num_timeslots'])
+    print("Dummy policy costs: ", results)

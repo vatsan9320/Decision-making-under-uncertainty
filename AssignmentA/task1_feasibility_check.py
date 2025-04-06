@@ -25,7 +25,11 @@ def check_feasibility(data, y_on, y_off, P2H, H2P, p, wind, hydrogen_stock, ele,
     if total_supply  + 1e-6 < demand :  # Add epsilon to avoid tight infeasibility
         print('total_supply < demand')
         print('p:', p, 'wind:', wind, 'H2P:', H2P, 'P2H:', P2H, 'total_supply', total_supply, 'demand:', demand)
-        return False, y_on, y_off, P2H, H2P, p  # Not feasible, return unchanged values
+        #return False, y_on, y_off, P2H, H2P, p  # Not feasible, return unchanged values
+        # we decide to take from the grid to meet the demand
+        print("correcting infeasibility")
+        p = demand - total_supply + 1e-6  # Add epsilon to avoid tight infeasibility
+        return True, y_on, y_off, P2H, H2P, p
 
     # Ensure the unit is either on or off, but not both
     if y_on + y_off > 1:
