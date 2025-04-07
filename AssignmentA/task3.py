@@ -160,7 +160,7 @@ def adp_policy_wrapper(theta):
     def wrapper(data, wind, price, hydrogen_stock, ele, t, T):
         # Get states
         if t == 0:
-            z_prev = (data['wind_power_t_1'], data['price_t_1'])
+            z_prev = (data['wind_power_t_2'], data['price_t_2'])
         elif t == 1:
             z_prev = (data['wind_power_t_1'], data['price_t_1'])
         else:

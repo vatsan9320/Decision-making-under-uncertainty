@@ -90,7 +90,8 @@ def solve_optimal_in_hindsight(data, wind_seq, price_seq, T):
     #------------------------------------------------------------------------------------------
     # set initial status of the electrolyzer
     model.InitialStatus = ConstraintList()
-    model.InitialStatus.add(model.e[0] == 0)   #TODO: can we assume this? We can
+    model.InitialStatus.add(model.e[0] == 0)  
+    model.InitialStatus.add(model.S[0] == 0)
 
     # Constraint on available power always == demand
     model.Power = ConstraintList()
@@ -118,11 +119,8 @@ def solve_optimal_in_hindsight(data, wind_seq, price_seq, T):
     # in the tank from the next timeslot t, plus the amount of hydrogen already stored (t-1) 
     # and minus the amount of hydrogen turned back into power in the same period t
     model.Storage = ConstraintList()
-    for t in range(T):
-        if t == 0:
-            model.Storage.add(model.S[0] == 0)
-        else:
-            model.Storage.add(model.S[t] == model.S[t-1] + model.P2H[t-1] * data['conversion_p2h']  - model.H2P[t-1])
+    for t in range(1,T):
+        model.Storage.add(model.S[t] == model.S[t-1] + model.P2H[t-1] * data['conversion_p2h']  - model.H2P[t-1])
 
 
     # if the electrolyzer is set to on we cannot turn it off and viceversa
@@ -199,12 +197,18 @@ if __name__ == "__main__":
     sim_data = simulate_wind_and_price(data, T=data['num_timeslots'])
     wind_seq = sim_data['wind']
     price_seq = sim_data['price']
-    obj, results = solve_optimal_in_hindsight(data, wind_seq, price_seq)
 
-    plot_results(data,
-    times=range( T=data['num_timeslots']),
-    wind_trajectory=wind_seq,
-    demand_schedule=data['demand_schedule'],
-    results=results,
-    price_trajectory=price_seq
-)
+    # Convert dictionaries to lists
+    wind_trajectory = [wind_seq[t] for t in range(data['num_timeslots'])]
+    price_trajectory = [price_seq[t] for t in range(data['num_timeslots'])]
+
+    obj, results = solve_optimal_in_hindsight(data, wind_seq, price_seq, T=data['num_timeslots'])
+
+    plot_results(
+        data=data,
+        times=range(data['num_timeslots']),
+        wind_trajectory=wind_trajectory,  # Pass the converted list
+        demand_schedule=data['demand_schedule'],
+        results=results,
+        price_trajectory=price_trajectory  # Pass the converted list
+    )

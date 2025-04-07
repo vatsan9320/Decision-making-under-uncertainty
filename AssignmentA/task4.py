@@ -28,7 +28,7 @@ def make_json_serializable(obj):
         return obj
 
 # -------- Generate Experiments --------
-def generate_experiments(num_timeslots, n):
+#def generate_experiments(num_timeslots, n):
     experiments = []
     for _ in range(n):
         sim = simulate_wind_and_price(data, T=num_timeslots)
@@ -36,49 +36,53 @@ def generate_experiments(num_timeslots, n):
         price_seq = [sim['price'][t] for t in range(num_timeslots)]
         experiments.append((wind_seq, price_seq))
     return experiments
-
-experiments = generate_experiments(num_timeslots=data['num_timeslots'], n=20)
-
-with open('experiments.json', 'w') as f:
-    json.dump(make_json_serializable(experiments), f)
-
+#
+#experiments = generate_experiments(num_timeslots=data['num_timeslots'], n=20)
+#
+#with open('experiments.json', 'w') as f:
+#    json.dump(make_json_serializable(experiments), f)
+#
 results = {}
 
+#load experiments from file
+with open('experiments.json', 'r') as f:
+    experiments = json.load(f)
+
 # -------- OIH Policy --------
-print("------------------------------------------------> Running experiments: OIH")
-oih_costs = []
-for wind_seq, price_seq in experiments:
-    cost, _ = solve_optimal_in_hindsight(data, wind_seq, price_seq, T=data['num_timeslots'])
-    oih_costs.append(cost)
-results["OIH"] = oih_costs
-with open('results_OIH.json', 'w') as f:
-    json.dump(make_json_serializable({"OIH": oih_costs}), f)
-
-# -------- Dummy Policy --------
-print("------------------------------------------------> Running experiments: Dummy policy")
-dummy_costs = evaluate_policy_over_experiments(make_dummy_decision, data, experiments, T=data['num_timeslots'])
-results["Dummy"] = dummy_costs
-with open('results_Dummy.json', 'w') as f:
-    json.dump(make_json_serializable({"Dummy": dummy_costs}), f)
-
-# -------- Stochastic Programming Policies --------
-num_clusters = [3, 4, 5]
-for num_cluster in num_clusters:
-    key = f"SE_{num_cluster}"
-    print(f"------------------------------------------------> Running experiments: {key}")
-    se_costs = evaluate_policy_over_experiments(
-        stochastic_optimization_here_and_now, data, experiments, T=data['num_timeslots'], n_clusters=num_cluster)
-    results[key] = se_costs
-    with open(f'results_{key}.json', 'w') as f:
-        json.dump(make_json_serializable({key: se_costs}), f)
-
-# -------- SE_EV Policy --------
-print("------------------------------------------------> Running experiments: SE_EV")
-se_ev_costs = evaluate_policy_over_experiments(
-    EV_stochastic_optimization_here_and_now, data, experiments, T=data['num_timeslots'], n_clusters=1)
-results["SE_EV"] = se_ev_costs
-with open('results_SE_EV.json', 'w') as f:
-    json.dump(make_json_serializable({"SE_EV": se_ev_costs}), f)
+#print("------------------------------------------------> Running experiments: OIH")
+#oih_costs = []
+#for wind_seq, price_seq in experiments:
+#    cost, _ = solve_optimal_in_hindsight(data, wind_seq, price_seq, T=data['num_timeslots'])
+#    oih_costs.append(cost)
+#results["OIH"] = oih_costs
+#with open('results_OIH.json', 'w') as f:
+#    json.dump(make_json_serializable({"OIH": oih_costs}), f)
+#
+## -------- Dummy Policy --------
+#print("------------------------------------------------> Running experiments: Dummy policy")
+#dummy_costs = evaluate_policy_over_experiments(make_dummy_decision, data, experiments, T=data['num_timeslots'])
+#results["Dummy"] = dummy_costs
+#with open('results_Dummy.json', 'w') as f:
+#    json.dump(make_json_serializable({"Dummy": dummy_costs}), f)
+#
+## -------- Stochastic Programming Policies --------
+#num_clusters = [3, 4, 5]
+#for num_cluster in num_clusters:
+#    key = f"SE_{num_cluster}"
+#    print(f"------------------------------------------------> Running experiments: {key}")
+#    se_costs = evaluate_policy_over_experiments(
+#        stochastic_optimization_here_and_now, data, experiments, T=data['num_timeslots'], n_clusters=num_cluster)
+#    results[key] = se_costs
+#    with open(f'results_{key}.json', 'w') as f:
+#        json.dump(make_json_serializable({key: se_costs}), f)
+#
+## -------- SE_EV Policy --------
+#print("------------------------------------------------> Running experiments: SE_EV")
+#se_ev_costs = evaluate_policy_over_experiments(
+#    EV_stochastic_optimization_here_and_now, data, experiments, T=data['num_timeslots'], n_clusters=1)
+#results["SE_EV"] = se_ev_costs
+#with open('results_SE_EV.json', 'w') as f:
+#    json.dump(make_json_serializable({"SE_EV": se_ev_costs}), f)
 
 # -------- ADP Policy --------
 print("------------------------------------------------> Running experiments: ADP")
@@ -89,9 +93,9 @@ with open('results_ADP.json', 'w') as f:
     json.dump(make_json_serializable({"ADP": adp_costs}), f)
 
 # -------- Save All Results Summary --------
-with open('results_all.json', 'w') as f:
-    json.dump(make_json_serializable(results), f)
-
+#with open('results_all.json', 'w') as f:
+#    json.dump(make_json_serializable(results), f)
+#
 
 # -------- Plotting --------
 def plot_cost_histograms(results):
